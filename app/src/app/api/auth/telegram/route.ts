@@ -9,7 +9,20 @@ export async function GET(req: NextRequest) {
   });
   const token = process.env.BOT_TOKEN;
   if (!token) return NextResponse.json({ error: "BOT_TOKEN not configured" }, { status: 500 });
-  const ok = verifyTelegramAuth(params, token);
+  let ok = false;
+  try {
+    ok = verifyTelegramAuth(params, token);
+  } catch (err) {
+    console.error("verifyTelegramAuth error", err);
+    return NextResponse.json({ error: "verification failed" }, { status: 400 });
+  }
   if (!ok) return NextResponse.json({ ok: false }, { status: 401 });
-  return NextResponse.json({ ok: true, user: params });
+  const user = {
+    id: params.id,
+    first_name: params.first_name,
+    last_name: params.last_name,
+    username: params.username,
+    photo_url: params.photo_url,
+  };
+  return NextResponse.json({ ok: true, user });
 }
