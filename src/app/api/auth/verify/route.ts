@@ -1,24 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Telegraf } from "telegraf";
+import { loginSecret } from "@/lib/loginSecret";
 
 export async function POST(req: NextRequest) {
-  const secret = process.env.WEBHOOK_SECRET;
   const token = process.env.BOT_TOKEN;
 
-  if (!secret || !token) {
+  if (!token) {
     return NextResponse.json({ error: "server misconfigured" }, { status: 500 });
   }
 
   try {
     const body = await req.json();
-    if (body.secret !== secret) {
-      return NextResponse.json({ error: "invalid secret" }, { status: 401 });
-    }
 
     // Get the chat ID from the request
     const chatId = body.chatId;
     if (!chatId) {
       return NextResponse.json({ error: "missing chat ID" }, { status: 400 });
+    }
+    const expected = loginSecret(token, chatId);
+    if (body.secret !== expected) {
+      return NextResponse.json({ error: "invalid secret" }, { status: 401 });
     }
 
     // Initialize the bot
