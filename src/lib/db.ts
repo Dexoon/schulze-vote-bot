@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique, primaryKey } from 'drizzle-orm/sqlite-core';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 
 const defaultPath = process.env.NODE_ENV === 'test'
@@ -15,7 +15,7 @@ if (dbPath !== ':memory:') {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
-const sqlite = new Database(dbPath);
+export const sqlite = new Database(dbPath);
 
 export const db = drizzle(sqlite);
 
@@ -38,16 +38,20 @@ export const bots = sqliteTable('bots', {
     .references(() => users.id),
 });
 
-export const chats = sqliteTable('chats', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  chatId: text('chat_id').notNull(),
-  userId: text('user_id')
-    .notNull()
-    .references(() => users.id),
-  botId: integer('bot_id')
-    .notNull()
-    .references(() => bots.id),
-});
+export const chats = sqliteTable(
+  'chats',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    chatId: text('chat_id').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    botId: integer('bot_id')
+      .notNull()
+      .references(() => bots.id),
+  },
+  table => ({ chatIdUq: unique().on(table.chatId) })
+);
 
 export const elections = sqliteTable('elections', {
   id: text('id').primaryKey(),
@@ -57,15 +61,19 @@ export const elections = sqliteTable('elections', {
   question: text('question').notNull(),
 });
 
-export const options = sqliteTable('options', {
-  electionsId: text('electionsId')
-    .notNull()
-    .references(() => elections.id),
-  option: text('option').notNull(),
-});
+export const options = sqliteTable(
+  'options',
+  {
+    electionsId: text('electionsId')
+      .notNull()
+      .references(() => elections.id),
+    option: text('option').notNull(),
+  },
+  table => ({ pk: primaryKey(table.electionsId, table.option) })
+);
 
 export const ballots = sqliteTable('ballots', {
-  id: text('id').notNull(),
+  id: text('id').primaryKey(),
   electionsId: text('electionsId')
     .notNull()
     .references(() => elections.id),

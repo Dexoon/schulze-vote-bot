@@ -12,12 +12,17 @@ export type Vote = {
 };
 
 
-/**
- * Creates a new vote for a chat with the specified question and options.
- *
- * @param chatId - The external identifier of the chat where the vote is created.
- * @param question - The question to be voted on.
- * @param options - The list of options available for voting.
+  try {
+    db.transaction(tx => {
+      tx.insert(electionsTable).values({ id, chatId: chat.id, question }).run();
+      for (const opt of options) {
+        tx.insert(optionsTable).values({ electionsId: id, option: opt }).run();
+      }
+    });
+  } catch (err) {
+    console.error('failed to create vote', err);
+    throw err;
+  }
  * @returns The created {@link Vote} object with an empty ballots array.
  *
  * @throws {Error} If the chat with the given {@link chatId} does not exist.

@@ -1,12 +1,25 @@
-import { test, expect } from 'vitest';
+import { test, expect, beforeEach, afterAll } from 'vitest';
 import crypto from 'crypto';
 
 import { verifyTelegramAuth } from '../src/lib/verifyTelegram';
 import { schulze, Ballot } from '../src/lib/schulze';
 import { createVote, addBallot, getResults } from '../src/lib/store';
-import db, { users, bots, chats } from '../src/lib/db';
+import db, { sqlite, users, bots, chats, ballots, options, elections } from '../src/lib/db';
 import { loginSecret } from '../src/lib/loginSecret';
 
+
+beforeEach(() => {
+  db.delete(ballots).run();
+  db.delete(options).run();
+  db.delete(elections).run();
+  db.delete(chats).run();
+  db.delete(bots).run();
+  db.delete(users).run();
+});
+
+afterAll(() => {
+  sqlite.close();
+});
 
 test('verifyTelegramAuth valid hash', () => {
   const botToken = '123:ABC';
