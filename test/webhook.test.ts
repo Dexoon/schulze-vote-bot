@@ -1,5 +1,4 @@
-import test, { mock } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { loginSecret } from '../src/lib/loginSecret';
 
@@ -7,81 +6,100 @@ const SECRET = 'sec';
 const TOKEN = '123:ABC';
 const BASE = 'https://example.com';
 
-test('webhook handler', async (t) => {
+describe('webhook handler', () => {
   // Save original env vars
-  const prevSecret = process.env.WEBHOOK_SECRET;
-  const prevToken = process.env.BOT_TOKEN;
-  const prevBase = process.env.BASE_URL;
+  let prevSecret: string | undefined;
+  let prevToken: string | undefined;
+  let prevBase: string | undefined;
+  let mod: any;
+  let sendMessage: any;
 
-  // Setup test environment
-  process.env.WEBHOOK_SECRET = SECRET;
-  process.env.BOT_TOKEN = TOKEN;
-  process.env.BASE_URL = BASE;
+  beforeEach(async () => {
+    // Save original env vars
+    prevSecret = process.env.WEBHOOK_SECRET;
+    prevToken = process.env.BOT_TOKEN;
+    prevBase = process.env.BASE_URL;
 
-  // Import after setting env vars
-  const mod = await import('../src/app/api/webhook/[id]/route');
-  const { POST, __getState, __setTestState } = mod;
-  const { loginUrl, mainId } = __getState();
+    // Setup test environment
+    process.env.WEBHOOK_SECRET = SECRET;
+    process.env.BOT_TOKEN = TOKEN;
+    process.env.BASE_URL = BASE;
 
-  // Replace bot with stub
-  const sendMessage = mock.fn();
-  const stubBot = { telegram: { sendMessage } } as any;
-  __setTestState(stubBot, mainId, loginUrl);
+    // Import after setting env vars
+    mod = await import('../src/app/api/webhook/[id]/route');
+    const { __getState, __setTestState } = mod;
+    const { loginUrl, mainId } = __getState();
 
-  await t.test('start message sends login link', async () => {
+    // Replace bot with stub
+    sendMessage = vi.fn();
+    const stubBot = { telegram: { sendMessage } };
+    __setTestState(stubBot, mainId, loginUrl);
+  });
+
+  afterEach(() => {
+    // Cleanup
+    process.env.WEBHOOK_SECRET = prevSecret;
+    process.env.BOT_TOKEN = prevToken;
+    process.env.BASE_URL = prevBase;
+    mod.__setTestState(null, null, null);
+  });
+
+  it('start message sends login link', async () => {
     const chatId = 42;
     const body = { update_id: 1, message: { chat: { id: chatId } } };
-    const req = new NextRequest('http://localhost/api/webhook/' + mainId, {
+    const req = new NextRequest('http://localhost/api/webhook/' + mod.__getState().mainId, {
       method: 'POST',
       headers: { 'x-telegram-bot-api-secret-token': SECRET },
       body: JSON.stringify(body),
       duplex: 'half'
     });
 
-    const res = await POST(req, { params: { id: mainId! } });
+    const res = await mod.POST(req, { params: { id: mod.__getState().mainId } });
 
-    assert.equal(res.status, 200);
-    assert.equal(sendMessage.mock.calls.length, 1);
-    assert.deepEqual(sendMessage.mock.calls[0].arguments[0], chatId);
-    assert.deepEqual(sendMessage.mock.calls[0].arguments[1], 'Use this link to log in:');
-    assert.deepEqual(sendMessage.mock.calls[0].arguments[2], {
-      reply_markup: {
-        inline_keyboard: [[{
-          text: 'Log in',
-          url: `${loginUrl}?secret=${loginSecret(TOKEN, chatId)}&chatId=${chatId}`
-        }]]
+    expect(res.status).toBe(200);
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith(
+      chatId,
+      'Use this link to log in:',
+      {
+        reply_markup: {
+          inline_keyboard: [[{
+            text: 'Log in',
+            url: `${mod.__getState().loginUrl}?secret=${loginSecret(TOKEN, chatId)}&chatId=${chatId}`
+          }]]
+        }
       }
-    });
+    );
   });
 
-  await t.test('rejects invalid secret token', async () => {
+  it('rejects invalid secret token', async () => {
     const body = { update_id: 1, message: { chat: { id: 42 } } };
-    const req = new NextRequest('http://localhost/api/webhook/' + mainId, {
+    const req = new NextRequest('http://localhost/api/webhook/' + mod.__getState().mainId, {
       method: 'POST',
       headers: { 'x-telegram-bot-api-secret-token': 'wrong-secret' },
       body: JSON.stringify(body),
       duplex: 'half'
     });
 
-    const res = await POST(req, { params: { id: mainId! } });
-    assert.equal(res.status, 401);
-    assert.equal(sendMessage.mock.calls.length, 0);
+    const res = await mod.POST(req, { params: { id: mod.__getState().mainId } });
+    expect(res.status).toBe(401);
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 
-  await t.test('rejects invalid JSON', async () => {
-    const req = new NextRequest('http://localhost/api/webhook/' + mainId, {
+  it('rejects invalid JSON', async () => {
+    const req = new NextRequest('http://localhost/api/webhook/' + mod.__getState().mainId, {
       method: 'POST',
       headers: { 'x-telegram-bot-api-secret-token': SECRET },
       body: 'invalid json',
       duplex: 'half'
     });
 
-    const res = await POST(req, { params: { id: mainId! } });
-    assert.equal(res.status, 400);
-    assert.equal(sendMessage.mock.calls.length, 0);
+    const res = await mod.POST(req, { params: { id: mod.__getState().mainId } });
+    expect(res.status).toBe(400);
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 
-  await t.test('rejects invalid webhook ID', async () => {
+  it('rejects invalid webhook ID', async () => {
     const body = { update_id: 1, message: { chat: { id: 42 } } };
     const req = new NextRequest('http://localhost/api/webhook/wrong-id', {
       method: 'POST',
@@ -90,15 +108,9 @@ test('webhook handler', async (t) => {
       duplex: 'half'
     });
 
-    const res = await POST(req, { params: { id: 'wrong-id' } });
-    assert.equal(res.status, 200); // Still returns 200 but doesn't send message
-    assert.equal(sendMessage.mock.calls.length, 0);
+    const res = await mod.POST(req, { params: { id: 'wrong-id' } });
+    expect(res.status).toBe(200); // Still returns 200 but doesn't send message
+    expect(sendMessage).not.toHaveBeenCalled();
   });
-
-  // Cleanup
-  process.env.WEBHOOK_SECRET = prevSecret;
-  process.env.BOT_TOKEN = prevToken;
-  process.env.BASE_URL = prevBase;
-  __setTestState(null, null, null);
 });
 
