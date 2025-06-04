@@ -5,7 +5,7 @@ import { verifyTelegramAuth } from '../src/lib/verifyTelegram';
 import { schulze, Ballot } from '../src/lib/schulze';
 import { createVote, addBallot, getResults } from '../src/lib/store';
 import db, { sqlite, users, bots, chats, ballots, options, elections } from '../src/lib/db';
-import { loginSecret } from '../src/lib/loginSecret';
+import { loginSecret, simpleHash } from '../src/lib/loginSecret';
 
 
 beforeEach(() => {
@@ -75,7 +75,7 @@ test('store vote lifecycle', () => {
 test('loginSecret generates user specific secret', () => {
   const token = 'TESTTOKEN';
   const userId = 42;
-  const expected = crypto.createHash('sha256').update(token + String(userId)).digest('hex');
+  const expected = simpleHash(token + String(userId));
   expect(loginSecret(token, userId)).toBe(expected);
   expect(loginSecret(token, userId)).not.toBe(loginSecret(token, userId + 1));
 });
