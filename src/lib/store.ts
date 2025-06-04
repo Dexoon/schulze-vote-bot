@@ -1,5 +1,6 @@
-import { Ballot, schulze } from "./schulze";
-import crypto from "crypto";
+import { Ballot, schulze } from './schulze';
+import crypto from 'crypto';
+import db from './db';
 
 export type Vote = {
   id: string;
@@ -9,7 +10,21 @@ export type Vote = {
   ballots: Ballot[];
 };
 
-const votes = new Map<string, Vote>();
+const insertVote = db.prepare(
+  'INSERT INTO votes (id, chatId, question) VALUES (?, ?, ?)'
+);
+const insertOption = db.prepare(
+  'INSERT INTO options (voteId, option) VALUES (?, ?)'
+);
+const insertBallot = db.prepare(
+  'INSERT INTO ballots (id, voteId, rankings) VALUES (?, ?, ?)'
+);
+const getVote = db.prepare('SELECT id, chatId, question FROM votes WHERE id=?');
+const getOptions = db.prepare('SELECT option FROM options WHERE voteId=?');
+const getBallots = db.prepare('SELECT id, rankings FROM ballots WHERE voteId=?');
+const listVotesStmt = db.prepare(
+  'SELECT id, chatId, question FROM votes WHERE chatId=?'
+);
 
 export function createVote(
   chatId: string,
@@ -17,24 +32,33 @@ export function createVote(
   options: string[]
 ): Vote {
   const id = crypto.randomUUID();
-  const vote: Vote = { id, chatId, question, options, ballots: [] };
-  votes.set(id, vote);
-  return vote;
+  insertVote.run(id, chatId, question);
+  const insertMany = db.transaction((opts: string[]) => {
+    for (const opt of opts) insertOption.run(id, opt);
+  });
+  insertMany(options);
+  return { id, chatId, question, options, ballots: [] };
 }
 
 export function addBallot(voteId: string, ballot: Ballot): boolean {
-  const vote = votes.get(voteId);
-  if (!vote) return false;
-  vote.ballots.push(ballot);
+  const row = getVote.get(voteId);
+  if (!row) return false;
+  insertBallot.run(ballot.id, voteId, JSON.stringify(ballot.rankings));
   return true;
 }
 
-export function listVotes(chatId: string) {
-  return Array.from(votes.values()).filter((v) => v.chatId === chatId);
+export function listVotes(chatId: string): Vote[] {
+  const rows = listVotesStmt.all(chatId) as { id: string; chatId: string; question: string }[];
+  return rows.map(r => {
+    const opts = getOptions.all(r.id).map((o: any) => o.option as string);
+    const ballots = getBallots.all(r.id).map((b: any) => ({ id: b.id, rankings: JSON.parse(b.rankings) }));
+    return { id: r.id, chatId: r.chatId, question: r.question, options: opts, ballots };
+  });
 }
 
 export function getResults(voteId: string) {
-  const vote = votes.get(voteId);
-  if (!vote) return null;
-  return schulze(vote.ballots);
+  const rows = getBallots.all(voteId) as { id: string; rankings: string }[];
+  if (rows.length === 0) return null;
+  const ballots = rows.map(r => ({ id: r.id, rankings: JSON.parse(r.rankings) as string[][] }));
+  return schulze(ballots);
 }
