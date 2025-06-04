@@ -12,6 +12,16 @@ export type Vote = {
 };
 
 
+/**
+ * Creates a new vote for a chat with the specified question and options.
+ *
+ * @param chatId - The external identifier of the chat where the vote is created.
+ * @param question - The question to be voted on.
+ * @param options - The list of options available for voting.
+ * @returns The created {@link Vote} object with an empty ballots array.
+ *
+ * @throws {Error} If the chat with the given {@link chatId} does not exist.
+ */
 export function createVote(
   chatId: string,
   question: string,
@@ -33,6 +43,13 @@ export function createVote(
   return { id, chatId, question, options, ballots: [] };
 }
 
+/**
+ * Adds a ballot to the specified vote.
+ *
+ * @param voteId - The unique identifier of the vote (election) to which the ballot should be added.
+ * @param ballot - The ballot containing voter rankings to be recorded.
+ * @returns `true` if the ballot was successfully added; `false` if the vote does not exist.
+ */
 export function addBallot(voteId: string, ballot: Ballot): boolean {
   const row = db
     .select()
@@ -46,6 +63,12 @@ export function addBallot(voteId: string, ballot: Ballot): boolean {
   return true;
 }
 
+/**
+ * Retrieves all votes associated with a given chat.
+ *
+ * @param chatId - The external identifier of the chat whose votes are to be listed.
+ * @returns An array of {@link Vote} objects for the specified chat, or an empty array if the chat does not exist.
+ */
 export function listVotes(chatId: string): Vote[] {
   const chat = db
     .select()
@@ -75,6 +98,14 @@ export function listVotes(chatId: string): Vote[] {
   });
 }
 
+/**
+ * Computes the election results for a given vote using the Schulze method.
+ *
+ * Retrieves all ballots associated with the specified vote, parses their rankings, and returns the computed results. Returns `null` if no ballots are found for the vote.
+ *
+ * @param voteId - The unique identifier of the vote.
+ * @returns The results of the election as computed by the Schulze method, or `null` if there are no ballots.
+ */
 export function getResults(voteId: string) {
   const rows = db
     .select()
