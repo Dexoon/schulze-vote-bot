@@ -37,9 +37,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid token format" }, { status: 400 });
   }
 
-  const base = process.env.BASE_URL;
+  const base = process.env.NEXT_PUBLIC_BASE_URL;
   if (!base) {
-    console.error("BASE_URL not configured");
+    console.error("NEXT_PUBLIC_BASE_URL not configured");
     return NextResponse.json({ error: "server misconfigured" }, { status: 500 });
   }
 
