@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { verifyTelegramAuth } from '../src/lib/verifyTelegram';
 import { schulze, Ballot } from '../src/lib/schulze';
 import { createVote, addBallot, getResults } from '../src/lib/store';
+import { loginSecret } from '../src/lib/loginSecret';
 
 
 test('verifyTelegramAuth valid hash', () => {
@@ -51,4 +52,12 @@ test('store vote lifecycle', () => {
   assert.equal(addBallot(vote.id, ballot), true);
   assert.deepEqual(getResults(vote.id), ['A', 'B', 'C']);
   assert.equal(addBallot('nonexistent', ballot), false);
+});
+
+test('loginSecret generates user specific secret', () => {
+  const token = 'TESTTOKEN';
+  const userId = 42;
+  const expected = crypto.createHash('sha256').update(token + String(userId)).digest('hex');
+  assert.equal(loginSecret(token, userId), expected);
+  assert.notEqual(loginSecret(token, userId), loginSecret(token, userId + 1));
 });

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { Telegraf } from "telegraf";
 import crypto from "crypto";
+import { loginSecret } from "@/lib/loginSecret";
 
 const secret = process.env.WEBHOOK_SECRET;
 const token = process.env.BOT_TOKEN;
@@ -61,7 +62,7 @@ export async function POST(
     console.log("loginUrl", loginUrl);
     if (chatId) {
       try {
-        const loginUrlWithSecret = `${loginUrl}?secret=${secret}&chatId=${chatId}`;
+        const loginUrlWithSecret = `${loginUrl}?secret=${loginSecret(token!, chatId)}&chatId=${chatId}`;
         await bot.telegram.sendMessage(chatId, "Use this link to log in:", {
           reply_markup: {
             inline_keyboard: [
