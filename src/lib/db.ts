@@ -1,9 +1,9 @@
-import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { Database } from 'bun:sqlite';
 import path from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import { sqliteTable, text, integer, unique, primaryKey } from 'drizzle-orm/sqlite-core';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 
 const defaultPath = process.env.NODE_ENV === 'test'
   ? ':memory:'

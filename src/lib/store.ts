@@ -11,6 +11,27 @@ export type Vote = {
   ballots: Ballot[];
 };
 
+/**
+ * Creates a new vote (election) in the specified chat.
+ * 
+ * @param chatId - The external identifier of the chat where the vote will be created
+ * @param question - The question or title of the vote
+ * @param options - Array of options to vote on
+ * @returns The created {@link Vote} object with an empty ballots array
+ * @throws {Error} If the chat with the given {@link chatId} does not exist
+ */
+export function createVote(
+  chatId: string,
+  question: string,
+  options: string[]
+): Vote {
+  const id = crypto.randomUUID();
+  const chat = db
+    .select()
+    .from(chats)
+    .where(eq(chats.chatId, chatId))
+    .get();
+  if (!chat) throw new Error('chat not found');
 
   try {
     db.transaction(tx => {
@@ -26,28 +47,7 @@ export type Vote = {
     console.error('failed to create vote', err);
     throw err;
   }
- * @returns The created {@link Vote} object with an empty ballots array.
- *
- * @throws {Error} If the chat with the given {@link chatId} does not exist.
- */
-export function createVote(
-  chatId: string,
-  question: string,
-  options: string[]
-): Vote {
-  const id = crypto.randomUUID();
-  const chat = db
-    .select()
-    .from(chats)
-    .where(eq(chats.chatId, chatId))
-    .get();
-  if (!chat) throw new Error('chat not found');
-  db.transaction(tx => {
-    tx.insert(electionsTable).values({ id, chatId: chat.id, question }).run();
-    for (const opt of options) {
-      tx.insert(optionsTable).values({ electionsId: id, option: opt }).run();
-    }
-  });
+
   return { id, chatId, question, options, ballots: [] };
 }
 
