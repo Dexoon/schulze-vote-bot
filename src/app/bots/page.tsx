@@ -28,14 +28,17 @@ export default function BotsPage() {
 
   async function register() {
     if (!token) return;
+    if (bots.some(b => b.token === token)) {
+      setStatus('Bot already added');
+      return;
+    }
     setLoading(true);
     setStatus('');
     try {
-      const res = await fetch('/api/bot', {
+      const res = await fetch('/api/bot/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
         },
         body: JSON.stringify({ token }),
       });
@@ -70,8 +73,8 @@ export default function BotsPage() {
         {status && <p>{status}</p>}
       </div>
       <ul>
-        {bots.map((b, i) => (
-          <li key={i} style={{ marginBottom: '1rem' }}>
+        {bots.map(b => (
+          <li key={b.token} style={{ marginBottom: '1rem' }}>
             <div>Token: {b.token}</div>
             {b.webhook && <div>Webhook: {b.webhook}</div>}
           </li>
