@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { existsSync, mkdirSync } from 'fs';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 const defaultPath = process.env.NODE_ENV === 'test'
   ? ':memory:'
@@ -12,9 +14,9 @@ if (dbPath !== ':memory:') {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
-const db = new Database(dbPath);
+const sqlite = new Database(dbPath);
 
-db.exec(`
+sqlite.exec(`
 CREATE TABLE IF NOT EXISTS votes (
   id TEXT PRIMARY KEY,
   chatId TEXT NOT NULL,
@@ -32,5 +34,24 @@ CREATE TABLE IF NOT EXISTS ballots (
   FOREIGN KEY(voteId) REFERENCES votes(id)
 );
 `);
+
+export const db = drizzle(sqlite);
+
+export const votes = sqliteTable('votes', {
+  id: text('id').primaryKey(),
+  chatId: text('chatId').notNull(),
+  question: text('question').notNull(),
+});
+
+export const options = sqliteTable('options', {
+  voteId: text('voteId').notNull(),
+  option: text('option').notNull(),
+});
+
+export const ballots = sqliteTable('ballots', {
+  id: text('id').notNull(),
+  voteId: text('voteId').notNull(),
+  rankings: text('rankings').notNull(),
+});
 
 export default db;
