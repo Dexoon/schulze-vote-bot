@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { Telegraf } from "telegraf";
 import { loginSecret } from "@/lib/loginSecret";
 
+// Use global Telegraf in test mode, otherwise use the imported one
+const TelegrafClass = process.env.NODE_ENV === 'test' 
+  ? (globalThis as any).Telegraf || Telegraf
+  : Telegraf;
+
 export async function POST(req: NextRequest) {
   const token = process.env.BOT_TOKEN;
 
@@ -23,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Initialize the bot
-    const bot = new Telegraf(token);
+    const bot = new TelegrafClass(token);
 
     try {
       // Get chat information from Telegram

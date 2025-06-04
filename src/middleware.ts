@@ -5,8 +5,8 @@ export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith('/api/webhook')) {
-    const apiKey = req.headers.get('x-api-key');
-    if (!apiKey || apiKey !== process.env.API_KEY) {
+    const secret = req.headers.get('x-telegram-bot-api-secret-token');
+    if (!secret || secret !== process.env.WEBHOOK_SECRET) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
     return NextResponse.next();

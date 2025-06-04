@@ -23,6 +23,8 @@ function mockEnv() {
 
 describe('login and bot registration flow', () => {
   const env: Record<string, string | undefined> = {};
+  let originalTelegraf: any;
+  let originalFetch: any;
 
   beforeEach(async () => {
     env.BOT_TOKEN = process.env.BOT_TOKEN;
@@ -32,11 +34,11 @@ describe('login and bot registration flow', () => {
 
     mockEnv();
 
-    vi.resetModules();
-
     getChatMock = vi.fn(async (id: number) => ({ id, first_name: 'Alice' }));
     setWebhookMock = vi.fn(async () => undefined);
 
+    // Patch global Telegraf for the duration of the test
+    originalTelegraf = (globalThis as any).Telegraf;
     class MockTelegraf {
       token: string;
       telegram: any;
@@ -45,14 +47,11 @@ describe('login and bot registration flow', () => {
         this.telegram = { getChat: getChatMock, setWebhook: setWebhookMock };
       }
     }
+    (globalThis as any).Telegraf = MockTelegraf;
 
-    vi.mock('telegraf', () => ({ Telegraf: MockTelegraf }));
-
-    verifyPost = (await import('../src/app/api/auth/verify/route')).POST;
-    botPost = (await import('../src/app/api/bot/route')).POST;
-    registerPost = (await import('../src/app/api/bot/register/route')).POST;
-
-    vi.stubGlobal('fetch', async (input: any, init: any) => {
+    // Patch global fetch for the duration of the test
+    originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input: any, init: any) => {
       const req = new NextRequest(String(input), {
         method: init?.method,
         headers: init?.headers,
@@ -60,13 +59,23 @@ describe('login and bot registration flow', () => {
         duplex: 'half',
       });
       return botPost(req);
-    });
+    };
+
+    verifyPost = (await import('../src/app/api/auth/verify/route')).POST;
+    botPost = (await import('../src/app/api/bot/route')).POST;
+    registerPost = (await import('../src/app/api/bot/register/route')).POST;
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.resetAllMocks();
-    vi.unmock('telegraf');
+    vi.clearAllMocks();
+    // Restore original Telegraf
+    if (originalTelegraf) {
+      (globalThis as any).Telegraf = originalTelegraf;
+    }
+    // Restore original fetch
+    if (originalFetch) {
+      globalThis.fetch = originalFetch;
+    }
     process.env.BOT_TOKEN = env.BOT_TOKEN;
     process.env.API_KEY = env.API_KEY;
     process.env.NEXT_PUBLIC_BASE_URL = env.NEXT_PUBLIC_BASE_URL;
@@ -86,15 +95,24 @@ describe('login and bot registration flow', () => {
 
     const loginRes = await verifyPost(loginReq);
     expect(loginRes.status).toBe(200);
-    const cookieHeader = loginRes.headers.get('set-cookie');
-    expect(cookieHeader).toBeTruthy();
+    const setCookieHeader = loginRes.headers.get('set-cookie');
+    expect(setCookieHeader).toBeTruthy();
+
+    // Parse set-cookie header(s) to construct a valid cookie header
+    // Handles multiple cookies in a single header separated by comma, or multiple set-cookie headers
+    function extractCookies(setCookie: string): string {
+      // Split on comma only if followed by a space and a word character (start of next cookie)
+      const parts = setCookie.split(/, (?=\w+=)/);
+      return parts.map(part => part.split(';')[0]).join('; ');
+    }
+    const cookieHeader = extractCookies(setCookieHeader as string);
 
     const botToken = '999:BOT_TOKEN_______________________________';
     const registerReq = new NextRequest('http://localhost/api/bot/register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        cookie: cookieHeader as string,
+        cookie: cookieHeader,
       },
       body: JSON.stringify({ token: botToken }),
       duplex: 'half',

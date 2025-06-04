@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Telegraf } from "telegraf";
 import crypto from "crypto";
+import { withAuth } from "@/lib/auth";
 
 const rateLimitWindow = 60_000; // 60 seconds
 const rateLimitCount = 5;
 const requests = new Map<string, number[]>();
 
-export async function POST(req: NextRequest) {
-  const apiKey = req.headers.get("x-api-key");
-  if (!apiKey || apiKey !== process.env.API_KEY) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+// Use global Telegraf in test mode, otherwise use the imported one
+const TelegrafClass = process.env.NODE_ENV === 'test'
+  ? (globalThis as any).Telegraf || Telegraf
+  : Telegraf;
 
+export const POST = withAuth(async (req: NextRequest, userId: string) => {
   const forwarded = req.headers.get("x-forwarded-for");
   const ip = forwarded?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
   const now = Date.now();
@@ -45,9 +46,8 @@ export async function POST(req: NextRequest) {
 
   const hash = crypto.createHash("sha256").update(token).digest("hex").slice(0, 16);
   const path = `api/webhook/${hash}`;
-  const url = `${base}/${path}`;
-
-  const bot = new Telegraf(token);
+  const url = new URL(path, base).toString();
+  const bot = new TelegrafClass(token);
   try {
     await bot.telegram.setWebhook(url, {
       secret_token: process.env.WEBHOOK_SECRET,
@@ -60,4 +60,4 @@ export async function POST(req: NextRequest) {
 
   console.log("webhook registered", ip, path);
   return NextResponse.json({ webhook: url, path });
-}
+});
