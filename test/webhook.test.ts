@@ -45,8 +45,8 @@ describe('webhook handler', () => {
   });
 
   it('start message sends login link', async () => {
-    const chatId = 42;
-    const body = { update_id: 1, message: { chat: { id: chatId } } };
+    const userId = 42;
+    const body = { update_id: 1, message: { chat: { id: userId } } };
     const req = new NextRequest('http://localhost/api/webhook/' + mod.__getState().mainId, {
       method: 'POST',
       headers: { 'x-telegram-bot-api-secret-token': SECRET },
@@ -59,13 +59,13 @@ describe('webhook handler', () => {
     expect(res.status).toBe(200);
     expect(sendMessage).toHaveBeenCalledTimes(1);
     expect(sendMessage).toHaveBeenCalledWith(
-      chatId,
+      userId,
       'Use this link to log in:',
       {
         reply_markup: {
           inline_keyboard: [[{
             text: 'Log in',
-            url: `${mod.__getState().loginUrl}?secret=${loginSecret(TOKEN, chatId)}&chatId=${chatId}`
+            url: `${mod.__getState().loginUrl}?secret=${loginSecret(TOKEN, userId)}&userId=${userId}`
           }]]
         }
       }

@@ -24,9 +24,9 @@ export default function LoginPage() {
     }
     const urlParams = new URLSearchParams(search);
     const secret = urlParams.get('secret');
-    const chatId = urlParams.get('chatId');
-    
-    if (!secret || !chatId) {
+    const userId = urlParams.get('userId');
+
+    if (!secret || !userId) {
       setStatus('error');
       setMessage('missing required parameters');
       return;
@@ -37,7 +37,7 @@ export default function LoginPage() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ secret, chatId: parseInt(chatId, 10) }),
+      body: JSON.stringify({ secret, userId: parseInt(userId, 10) }),
     })
       .then(r => r.json())
       .then(data => {
