@@ -18,12 +18,12 @@ describe('webhook handler', () => {
     // Save original env vars
     prevSecret = process.env.WEBHOOK_SECRET;
     prevToken = process.env.BOT_TOKEN;
-    prevBase = process.env.BASE_URL;
+    prevBase = process.env.NEXT_PUBLIC_BASE_URL;
 
     // Setup test environment
     process.env.WEBHOOK_SECRET = SECRET;
     process.env.BOT_TOKEN = TOKEN;
-    process.env.BASE_URL = BASE;
+    process.env.NEXT_PUBLIC_BASE_URL = BASE;
 
     // Import after setting env vars
     mod = await import('../src/app/api/webhook/[id]/route');
@@ -40,7 +40,7 @@ describe('webhook handler', () => {
     // Cleanup
     process.env.WEBHOOK_SECRET = prevSecret;
     process.env.BOT_TOKEN = prevToken;
-    process.env.BASE_URL = prevBase;
+    process.env.NEXT_PUBLIC_BASE_URL = prevBase;
     mod.__setTestState(null, null, null);
   });
 

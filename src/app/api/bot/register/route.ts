@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 })
   }
-  const url = new URL('/api/bot', req.url)
+  const url = new URL('/api/bot', process.env.NEXT_PUBLIC_BASE_URL || req.headers.get('origin') || 'http://localhost:3000')
   const res = await fetch(url.toString(), {
     method: 'POST',
     headers: {

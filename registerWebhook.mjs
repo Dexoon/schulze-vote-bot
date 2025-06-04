@@ -3,11 +3,11 @@ import crypto from 'crypto';
 import { URL } from 'url';
 
 const token = process.env.BOT_TOKEN;
-const base = process.env.BASE_URL;
+const base = process.env.NEXT_PUBLIC_BASE_URL;
 const secret = process.env.WEBHOOK_SECRET;
 
 if (!token || !base || !secret) {
-  console.error('BOT_TOKEN, BASE_URL, and WEBHOOK_SECRET must be set');
+  console.error('BOT_TOKEN, NEXT_PUBLIC_BASE_URL, and WEBHOOK_SECRET must be set');
   process.exit(1);
 }
 
@@ -18,7 +18,7 @@ try {
   const webhookUrl = new URL(`api/webhook/${hash}`, baseUrl);
   urlStr = webhookUrl.toString();
 } catch {
-  console.error('BASE_URL must be a valid absolute URL');
+  console.error('NEXT_PUBLIC_BASE_URL must be a valid absolute URL');
   process.exit(1);
 }
 

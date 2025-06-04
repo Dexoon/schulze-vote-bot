@@ -8,7 +8,7 @@ import { loginSecret } from "@/lib/loginSecret";
 
 const secret = process.env.WEBHOOK_SECRET;
 const token = process.env.BOT_TOKEN;
-const base = process.env.BASE_URL;
+const base = process.env.NEXT_PUBLIC_BASE_URL;
 
 let mainId: string | null = null;
 let bot: Telegraf | null = null;
