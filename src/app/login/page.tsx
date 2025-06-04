@@ -21,13 +21,22 @@ export default function LoginPage() {
       return;
     }
     const urlParams = new URLSearchParams(search);
-    if (!urlParams.get('token') || !urlParams.get('chat_id')) {
+    const secret = urlParams.get('secret');
+    const chatId = urlParams.get('chatId');
+    
+    if (!secret || !chatId) {
       setStatus('error');
-      setMessage('invalid parameters');
+      setMessage('missing required parameters');
       return;
     }
-    const qs = urlParams.toString();
-    fetch('/api/auth/telegram?' + qs)
+
+    fetch('/api/auth/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ secret, chatId: parseInt(chatId, 10) }),
+    })
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
@@ -49,7 +58,7 @@ export default function LoginPage() {
   return (
     <main style={{padding:'2rem'}}>
       <h1>Logged in</h1>
-      <p>Welcome, {user.first_name}</p>
+      <p>Welcome, {user?.first_name}</p>
     </main>
   );
 }
