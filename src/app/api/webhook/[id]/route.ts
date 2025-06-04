@@ -68,12 +68,12 @@ export async function POST(
     const update = body as {
       message?: { chat?: { id?: number } };
     };
-    const chatId = update.message?.chat?.id;
+    const userId = update.message?.chat?.id;
     console.log("loginUrl", loginUrl);
-    if (chatId) {
+    if (userId) {
       try {
-        const loginUrlWithSecret = `${loginUrl}?secret=${loginSecret(token!, chatId)}&chatId=${chatId}`;
-        await bot.telegram.sendMessage(chatId, "Use this link to log in:", {
+        const loginUrlWithSecret = `${loginUrl}?secret=${loginSecret(token!, userId)}&userId=${userId}`;
+        await bot.telegram.sendMessage(userId, "Use this link to log in:", {
           reply_markup: {
             inline_keyboard: [
               [

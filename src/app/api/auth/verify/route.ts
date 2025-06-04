@@ -12,12 +12,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Get the chat ID from the request
-    const chatId = body.chatId;
-    if (!chatId) {
-      return NextResponse.json({ error: "missing chat ID" }, { status: 400 });
+    // Get the user ID from the request
+    const userId = body.userId;
+    if (!userId) {
+      return NextResponse.json({ error: "missing user ID" }, { status: 400 });
     }
-    const expected = loginSecret(token, chatId);
+    const expected = loginSecret(token, userId);
     if (body.secret !== expected) {
       return NextResponse.json({ error: "invalid secret" }, { status: 401 });
     }
@@ -27,14 +27,13 @@ export async function POST(req: NextRequest) {
 
     try {
       // Get chat information from Telegram
-      const chat = await bot.telegram.getChat(chatId);
+      const chat = await bot.telegram.getChat(userId);
       
       if (!chat || !('first_name' in chat)) {
         return NextResponse.json({ error: "invalid chat" }, { status: 400 });
       }
 
-      // Return the user information
-      return NextResponse.json({
+      const res = NextResponse.json({
         ok: true,
         user: {
           id: chat.id,
@@ -43,6 +42,18 @@ export async function POST(req: NextRequest) {
           username: 'username' in chat ? chat.username : undefined,
         }
       });
+      // Set login cookies so subsequent API calls are authenticated
+      res.cookies.set('loginsecret', expected, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: '/',
+      });
+      res.cookies.set('userId', String(userId), {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: '/',
+      });
+      return res;
     } catch (err) {
       console.error("Failed to fetch chat from Telegram", err);
       return NextResponse.json({ error: "failed to fetch user information" }, { status: 500 });
