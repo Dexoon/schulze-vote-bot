@@ -35,6 +35,22 @@ a {
   text-decoration: none;
 }
 
+nav.navbar {
+  display: flex;
+  padding: 1rem;
+  background: #eee;
+  border-bottom: 1px solid #ccc;
+  margin-bottom: 2rem;
+}
+
+.navbar .nav-link {
+  margin-right: 1rem;
+}
+
+.navbar .nav-user {
+  margin-left: auto;
+}
+
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
