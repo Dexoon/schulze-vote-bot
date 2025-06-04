@@ -12,6 +12,8 @@ export default function BotsPage() {
   const [token, setToken] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editToken, setEditToken] = useState('');
 
   useEffect(() => {
     try {
@@ -26,6 +28,26 @@ export default function BotsPage() {
     } catch {}
   }, [bots]);
 
+  async function callRegister(tok: string) {
+    try {
+      const res = await fetch('/api/bot/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: tok }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        return { webhook: data.webhook as string, path: data.path as string };
+      } else {
+        return { error: data.error || 'Failed to register' };
+      }
+    } catch {
+      return { error: 'Request failed' };
+    }
+  }
+
   async function register() {
     if (!token) return;
     if (bots.some(b => b.token === token)) {
@@ -35,26 +57,48 @@ export default function BotsPage() {
     setLoading(true);
     setStatus('');
     try {
-      const res = await fetch('/api/bot/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setBots([...bots, { token, webhook: data.webhook, path: data.path }]);
+      const { webhook, path, error } = await callRegister(token);
+      if (webhook) {
+        setBots([...bots, { token, webhook, path }]);
         setToken('');
         setStatus('Bot registered');
-      } else {
-        setStatus(data.error || 'Failed to register');
+      } else if (error) {
+        setStatus(error);
       }
-    } catch {
-      setStatus('Request failed');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function saveEdit(original: string) {
+    if (!editToken) return;
+    if (bots.some(b => b.token === editToken && b.token !== original)) {
+      setStatus('Bot already added');
+      return;
+    }
+    setLoading(true);
+    setStatus('');
+    try {
+      const { webhook, path, error } = await callRegister(editToken);
+      if (webhook) {
+        setBots(
+          bots.map(b =>
+            b.token === original ? { token: editToken, webhook, path } : b
+          )
+        );
+        setEditing(null);
+        setEditToken('');
+        setStatus('Bot updated');
+      } else if (error) {
+        setStatus(error);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function remove(token: string) {
+    setBots(bots.filter(b => b.token !== token));
   }
 
   return (
@@ -75,8 +119,51 @@ export default function BotsPage() {
       <ul>
         {bots.map(b => (
           <li key={b.token} style={{ marginBottom: '1rem' }}>
-            <div>Token: {b.token}</div>
-            {b.webhook && <div>Webhook: {b.webhook}</div>}
+            {editing === b.token ? (
+              <>
+                <input
+                  type="text"
+                  value={editToken}
+                  onChange={e => setEditToken(e.target.value)}
+                />
+                <button
+                  onClick={() => saveEdit(b.token)}
+                  disabled={loading || !editToken}
+                  style={{ marginLeft: '0.5rem' }}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setEditing(null);
+                    setEditToken('');
+                  }}
+                  style={{ marginLeft: '0.5rem' }}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <div>Token: {b.token}</div>
+                {b.webhook && <div>Webhook: {b.webhook}</div>}
+                <button
+                  onClick={() => {
+                    setEditing(b.token);
+                    setEditToken(b.token);
+                  }}
+                  style={{ marginLeft: '0.5rem' }}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => remove(b.token)}
+                  style={{ marginLeft: '0.5rem' }}
+                >
+                  Delete
+                </button>
+              </>
+              )}
           </li>
         ))}
       </ul>
