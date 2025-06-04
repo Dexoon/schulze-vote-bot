@@ -50,7 +50,9 @@ export const chats = sqliteTable(
       .notNull()
       .references(() => bots.id),
   },
-  table => ({ chatIdUq: unique().on(table.chatId) })
+  table => ({
+    chats_unique: unique().on(table.chatId, table.userId, table.botId),
+  })
 );
 
 export const elections = sqliteTable('elections', {
@@ -64,12 +66,13 @@ export const elections = sqliteTable('elections', {
 export const options = sqliteTable(
   'options',
   {
+    id: text('id').primaryKey(),
     electionsId: text('electionsId')
       .notNull()
       .references(() => elections.id),
     option: text('option').notNull(),
   },
-  table => ({ pk: primaryKey(table.electionsId, table.option) })
+  table => ({ pk: unique().on(table.electionsId, table.option) })
 );
 
 export const ballots = sqliteTable('ballots', {

@@ -1,5 +1,5 @@
 CREATE TABLE `ballots` (
-	`id` text NOT NULL,
+	`id` text PRIMARY KEY NOT NULL,
 	`electionsId` text NOT NULL,
 	`rankings` text NOT NULL,
 	FOREIGN KEY (`electionsId`) REFERENCES `elections`(`id`) ON UPDATE no action ON DELETE no action
@@ -21,6 +21,7 @@ CREATE TABLE `chats` (
 	FOREIGN KEY (`bot_id`) REFERENCES `bots`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `chats_chat_id_user_id_bot_id_unique` ON `chats` (`chat_id`,`user_id`,`bot_id`);--> statement-breakpoint
 CREATE TABLE `elections` (
 	`id` text PRIMARY KEY NOT NULL,
 	`chatId` integer NOT NULL,
@@ -29,11 +30,13 @@ CREATE TABLE `elections` (
 );
 --> statement-breakpoint
 CREATE TABLE `options` (
+	`id` text PRIMARY KEY NOT NULL,
 	`electionsId` text NOT NULL,
 	`option` text NOT NULL,
 	FOREIGN KEY (`electionsId`) REFERENCES `elections`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `options_electionsId_option_unique` ON `options` (`electionsId`,`option`);--> statement-breakpoint
 CREATE TABLE `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`first_name` text NOT NULL,

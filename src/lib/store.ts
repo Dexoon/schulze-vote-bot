@@ -16,7 +16,10 @@ export type Vote = {
     db.transaction(tx => {
       tx.insert(electionsTable).values({ id, chatId: chat.id, question }).run();
       for (const opt of options) {
-        tx.insert(optionsTable).values({ electionsId: id, option: opt }).run();
+        tx
+          .insert(optionsTable)
+          .values({ id: crypto.randomUUID(), electionsId: id, option: opt })
+          .run();
       }
     });
   } catch (err) {

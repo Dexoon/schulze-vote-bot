@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ec7139bc-117e-4c29-9f01-29d8d7dc383f",
+  "id": "cbe18bce-2c62-4066-909b-78b0be63af54",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "ballots": {
@@ -10,7 +10,7 @@
         "id": {
           "name": "id",
           "type": "text",
-          "primaryKey": false,
+          "primaryKey": true,
           "notNull": true,
           "autoincrement": false
         },
@@ -126,7 +126,17 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "chats_chat_id_user_id_bot_id_unique": {
+          "name": "chats_chat_id_user_id_bot_id_unique",
+          "columns": [
+            "chat_id",
+            "user_id",
+            "bot_id"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "chats_user_id_users_id_fk": {
           "name": "chats_user_id_users_id_fk",
@@ -207,6 +217,13 @@
     "options": {
       "name": "options",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
         "electionsId": {
           "name": "electionsId",
           "type": "text",
@@ -222,7 +239,16 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "options_electionsId_option_unique": {
+          "name": "options_electionsId_option_unique",
+          "columns": [
+            "electionsId",
+            "option"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "options_electionsId_elections_id_fk": {
           "name": "options_electionsId_elections_id_fk",
