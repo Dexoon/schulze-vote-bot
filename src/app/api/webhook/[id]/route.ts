@@ -14,6 +14,16 @@ let mainId: string | null = null;
 let bot: Telegraf | null = null;
 let loginUrl: string | null = null;
 
+export function __setTestState(
+  testBot: Telegraf | null,
+  id: string | null,
+  url: string | null
+) {
+  bot = testBot;
+  mainId = id;
+  loginUrl = url;
+}
+
 if (token && base) {
   mainId = crypto.createHash("sha256").update(token).digest("hex").slice(0, 16);
   bot = new Telegraf(token);
@@ -81,6 +91,10 @@ export async function POST(
     }
   }
   return NextResponse.json({ ok: true });
+}
+
+export function __getState() {
+  return { bot, mainId, loginUrl };
 }
 
 
