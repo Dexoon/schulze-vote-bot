@@ -1,5 +1,7 @@
-import { Ballot, schulze } from "./schulze";
-import crypto from "crypto";
+import { Ballot, schulze } from './schulze';
+import crypto from 'crypto';
+import db, { elections as electionsTable, options as optionsTable, ballots as ballotsTable, chats } from './db';
+import { eq } from 'drizzle-orm';
 
 export type Vote = {
   id: string;
@@ -9,32 +11,116 @@ export type Vote = {
   ballots: Ballot[];
 };
 
-const votes = new Map<string, Vote>();
-
+/**
+ * Creates a new vote (election) in the specified chat.
+ * 
+ * @param chatId - The external identifier of the chat where the vote will be created
+ * @param question - The question or title of the vote
+ * @param options - Array of options to vote on
+ * @returns The created {@link Vote} object with an empty ballots array
+ * @throws {Error} If the chat with the given {@link chatId} does not exist
+ */
 export function createVote(
   chatId: string,
   question: string,
   options: string[]
 ): Vote {
   const id = crypto.randomUUID();
-  const vote: Vote = { id, chatId, question, options, ballots: [] };
-  votes.set(id, vote);
-  return vote;
+  const chat = db
+    .select()
+    .from(chats)
+    .where(eq(chats.chatId, chatId))
+    .get();
+  if (!chat) throw new Error('chat not found');
+
+  try {
+    db.transaction(tx => {
+      tx.insert(electionsTable).values({ id, chatId: chat.id, question }).run();
+      for (const opt of options) {
+        tx
+          .insert(optionsTable)
+          .values({ id: crypto.randomUUID(), electionsId: id, option: opt })
+          .run();
+      }
+    });
+  } catch (err) {
+    console.error('failed to create vote', err);
+    throw err;
+  }
+
+  return { id, chatId, question, options, ballots: [] };
 }
 
+/**
+ * Adds a ballot to the specified vote.
+ *
+ * @param voteId - The unique identifier of the vote (election) to which the ballot should be added.
+ * @param ballot - The ballot containing voter rankings to be recorded.
+ * @returns `true` if the ballot was successfully added; `false` if the vote does not exist.
+ */
 export function addBallot(voteId: string, ballot: Ballot): boolean {
-  const vote = votes.get(voteId);
-  if (!vote) return false;
-  vote.ballots.push(ballot);
+  const row = db
+    .select()
+    .from(electionsTable)
+    .where(eq(electionsTable.id, voteId))
+    .get();
+  if (!row) return false;
+  db.insert(ballotsTable)
+    .values({ id: ballot.id, electionsId: voteId, rankings: JSON.stringify(ballot.rankings) })
+    .run();
   return true;
 }
 
-export function listVotes(chatId: string) {
-  return Array.from(votes.values()).filter((v) => v.chatId === chatId);
+/**
+ * Retrieves all votes associated with a given chat.
+ *
+ * @param chatId - The external identifier of the chat whose votes are to be listed.
+ * @returns An array of {@link Vote} objects for the specified chat, or an empty array if the chat does not exist.
+ */
+export function listVotes(chatId: string): Vote[] {
+  const chat = db
+    .select()
+    .from(chats)
+    .where(eq(chats.chatId, chatId))
+    .get();
+  if (!chat) return [];
+  const rows = db
+    .select()
+    .from(electionsTable)
+    .where(eq(electionsTable.chatId, chat.id))
+    .all();
+  return rows.map(r => {
+    const opts = db
+      .select({ option: optionsTable.option })
+      .from(optionsTable)
+      .where(eq(optionsTable.electionsId, r.id))
+      .all()
+      .map(o => o.option as string);
+    const ballots = db
+      .select()
+      .from(ballotsTable)
+      .where(eq(ballotsTable.electionsId, r.id))
+      .all()
+      .map(b => ({ id: b.id, rankings: JSON.parse(b.rankings) }));
+    return { id: r.id, chatId, question: r.question, options: opts, ballots };
+  });
 }
 
+/**
+ * Computes the election results for a given vote using the Schulze method.
+ *
+ * Retrieves all ballots associated with the specified vote, parses their rankings, and returns the computed results. Returns `null` if no ballots are found for the vote.
+ *
+ * @param voteId - The unique identifier of the vote.
+ * @returns The results of the election as computed by the Schulze method, or `null` if there are no ballots.
+ */
 export function getResults(voteId: string) {
-  const vote = votes.get(voteId);
-  if (!vote) return null;
-  return schulze(vote.ballots);
+  const rows = db
+    .select()
+    .from(ballotsTable)
+    .where(eq(ballotsTable.electionsId, voteId))
+    .all() as { id: string; rankings: string }[];
+  if (rows.length === 0) return null;
+  const ballots = rows.map(r => ({ id: r.id, rankings: JSON.parse(r.rankings) as string[][] }));
+  return schulze(ballots);
 }
