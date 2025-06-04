@@ -16,11 +16,15 @@ let loginUrl: string | null = null;
 if (token && base) {
   mainId = crypto.createHash("sha256").update(token).digest("hex").slice(0, 16);
   bot = new Telegraf(token);
-  loginUrl = `${base.replace(/\/$/, "")}/login`;
+  // Clean the base URL by removing trailing slashes and any carriage returns
+  const cleanBase = base.trim().replace(/\/+$/, "").replace(/[\r\n]/g, "");
+  loginUrl = `${cleanBase}/login`;
 }
 
-export async function POST(req: NextRequest, context: unknown) {
-  const { params } = context as { params: Record<string, string> };
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   if (!secret) {
     console.error("WEBHOOK_SECRET not configured");
     return NextResponse.json({ error: "server misconfigured" }, { status: 500 });
@@ -54,15 +58,17 @@ export async function POST(req: NextRequest, context: unknown) {
       message?: { chat?: { id?: number } };
     };
     const chatId = update.message?.chat?.id;
+    console.log("loginUrl", loginUrl);
     if (chatId) {
       try {
+        const loginUrlWithSecret = `${loginUrl}?secret=${secret}&chatId=${chatId}`;
         await bot.telegram.sendMessage(chatId, "Use this link to log in:", {
           reply_markup: {
             inline_keyboard: [
               [
                 {
                   text: "Log in",
-                  login_url: { url: loginUrl },
+                  url: loginUrlWithSecret,
                 },
               ],
             ],
