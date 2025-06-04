@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Telegraf } from "telegraf";
+import crypto from "crypto";
 
 const secret = process.env.WEBHOOK_SECRET;
+const token = process.env.BOT_TOKEN;
+const base = process.env.BASE_URL;
+
+let mainId: string | null = null;
+let bot: Telegraf | null = null;
+let loginUrl: string | null = null;
+
+if (token && base) {
+  mainId = crypto.createHash("sha256").update(token).digest("hex").slice(0, 16);
+  bot = new Telegraf(token);
+  loginUrl = `${base.replace(/\/$/, "")}/login`;
+}
 
 export async function POST(req: NextRequest, context: unknown) {
   const { params } = context as { params: Record<string, string> };
@@ -31,5 +45,32 @@ export async function POST(req: NextRequest, context: unknown) {
   } else {
     console.log("update", params.id);
   }
+
+  if (bot && loginUrl && params.id === mainId) {
+    const update = body as {
+      message?: { chat?: { id?: number } };
+    };
+    const chatId = update.message?.chat?.id;
+    if (chatId) {
+      try {
+        await bot.telegram.sendMessage(chatId, "Use this link to log in:", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "Log in",
+                  login_url: { url: loginUrl },
+                },
+              ],
+            ],
+          },
+        });
+      } catch (err) {
+        console.error("failed to send login link", err);
+      }
+    }
+  }
   return NextResponse.json({ ok: true });
 }
+
+

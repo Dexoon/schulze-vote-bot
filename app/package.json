@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "node ./registerWebhook.mjs && next dev --turbopack",
     "build": "next build",
-    "start": "next start",
+    "start": "node ./registerWebhook.mjs && next start",
     "lint": "next lint"
+  },
+  "engines": {
+    "node": ">=14.8.0"
   },
   "dependencies": {
     "next": "15.3.3",
