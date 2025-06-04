@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 type TgUser = {
   id: number;
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [status, setStatus] = useState<'loading' | 'error' | 'ok'>('loading');
   const [message, setMessage] = useState('');
   const [user, setUser] = useState<TgUser | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const search = window.location.search;
@@ -42,6 +44,10 @@ export default function LoginPage() {
         if (data.ok) {
           setUser(data.user);
           setStatus('ok');
+          try {
+            localStorage.setItem('tgUser', JSON.stringify(data.user));
+          } catch {}
+          router.replace('/bots');
         } else {
           setStatus('error');
           setMessage(data.error || 'login failed');
