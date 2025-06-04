@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+
+// Ensure this route is treated as dynamic so `params` can be read synchronously
+export const dynamic = "force-dynamic";
 import { Telegraf } from "telegraf";
 import crypto from "crypto";
 
