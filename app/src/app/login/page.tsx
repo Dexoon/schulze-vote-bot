@@ -14,13 +14,20 @@ export default function LoginPage() {
   const [user, setUser] = useState<TgUser | null>(null);
 
   useEffect(() => {
-    const params = window.location.search.slice(1);
-    if (!params) {
+    const search = window.location.search;
+    if (!search) {
       setStatus('error');
       setMessage('missing auth data');
       return;
     }
-    fetch('/api/auth/telegram?' + params)
+    const urlParams = new URLSearchParams(search);
+    if (!urlParams.get('token') || !urlParams.get('chat_id')) {
+      setStatus('error');
+      setMessage('invalid parameters');
+      return;
+    }
+    const qs = urlParams.toString();
+    fetch('/api/auth/telegram?' + qs)
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
